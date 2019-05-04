@@ -1,0 +1,266 @@
+;; -*- mode: lisp -*-
+(in-package :stumpwm)
+
+;; Set up swank so we can connect to stumpwm in emacs
+;; using M-x RET slime-connect
+(require :swank)
+(swank-loader:init)
+
+(defcommand swank-start () ()
+  (swank:create-server :port 4004
+                       :style swank:*communication-style*
+                       :dont-close t)
+  (message "Starting swank. Use M-x RET slime-connect"))
+
+(defcommand swank-stop () ()
+  (swank:stop-server 4004)
+  (message "Stopping swank."))
+
+(defcommand open-firefox () ()
+  "Run firefox"
+  (run-or-raise "firefox" `(:class "Firefox")))
+(define-key *root-map* (kbd "f") "open-firefox")
+
+(defcommand open-chrome () ()
+            "Run chrome"
+            (run-or-raise "google-chrome-stable" `(:class "Chrome")))
+;;(define-key *root-map* (kbd "f") "open-chrome")
+
+(defcommand open-spotify () ()
+  "Run spotify"
+  (run-or-raise "spotify --force-device-scale-factor=2" `(:class "Spotify")))
+(define-key *root-map* (kbd "s") "open-spotify")
+
+(defcommand open-urxvt () ()
+  "Run urxvt terminal"
+  (run-or-raise "urxvt" `(:class "URxvt")))
+
+(defcommand open-urxvt-new () ()
+  "Run urxvt terminal"
+  (run-shell-command "urxvt"))
+
+(define-key *root-map* (kbd "c") "open-urxvt")
+(define-key *root-map* (kbd "C-c") "open-urxvt-new")
+
+(define-key *root-map* (kbd "|") "hsplit")
+(define-key *root-map* (kbd "-") "vsplit")
+
+(define-key *root-map* (kbd "h") "move-focus left")
+(define-key *root-map* (kbd "l") "move-focus right")
+(define-key *root-map* (kbd "j") "move-focus down")
+(define-key *root-map* (kbd "k") "move-focus up")
+(define-key *root-map* (kbd "d") "remove")
+
+(define-key *root-map* (kbd "H") "move-window left")
+(define-key *root-map* (kbd "L") "move-window right")
+(define-key *root-map* (kbd "J") "move-window down")
+(define-key *root-map* (kbd "K") "move-window up")
+
+(define-key *root-map* (kbd "b") "pull-from-windowlist")
+
+;; Theme
+
+(run-shell-command "~/.fehbg")
+(set-msg-border-width 1)
+(setf *message-window-padding* 20)
+(setf *message-window-gravity* :center)
+(setf *input-window-gravity* :center)
+
+(setf *window-border-style* :thin)
+
+;; Modeline
+
+(setf *colors*
+      '("black"
+       "red"
+       "green"
+       "yellow"
+       "blue"
+       "magenta"
+       "cyan"
+       "white"
+       "GreenYellow"
+       "#009696"))
+(update-color-map (current-screen))
+
+(defcommand toggle-modeline () ()
+  "Toggle the modeline"
+  (toggle-mode-line (current-screen) (current-head)))
+(define-key *root-map* (kbd "m") "toggle-modeline")
+
+(defun trim-run-shell-command (command)
+  (string-trim
+   '(#\Newline)
+   (run-shell-command command t)))
+
+(defun get-date ()
+  (trim-run-shell-command "date +\"%l:%M %p\"" ))
+
+(defun wifi-strength ()
+  (trim-run-shell-command "awk 'NR==3{print $3}' /proc/net/wireless | sed 's/\\.//'") )
+
+(defun wifi-interface ()
+  (trim-run-shell-command "awk 'NR==3{print $1}' /proc/net/wireless | sed 's/://'"))
+
+(defun wifi-ssid ()
+  (trim-run-shell-command (concat "iw dev " (wifi-interface) " info "
+                                  " | awk '$1==\"ssid\" {print $2}'")))
+(setf *mode-line-border-width* 0)
+(setf *mode-line-background-color* "#000809")
+(setf *mode-line-foreground-color* "DeepSkyBlue")
+
+(load-module "battery-portable")
+(load-module "wifi")
+(setf *mode-line-position* :top)
+(setf *group-format* " %t ")
+(setf *screen-mode-line-format*
+      (list
+       "λ "
+
+       ;; Groups
+       "^B^3"
+       "%g"
+       "^b^n"
+
+       ;; Windows
+       "^7"
+       "%w"
+       "^n"
+
+       "^>" ;; Float right
+       '(:eval (wifi-ssid))
+       " "
+       "[" '(:eval (wifi-strength)) "%" "]"
+       " | "
+       '(:eval (get-date)) 
+       " | "
+       "%B" ;; Battery
+       ))
+(setf *mode-line-timeout* 1)
+
+(if (not (head-mode-line (current-head)))
+    (toggle-mode-line (current-screen) (current-head)))
+
+;; Set focus follows mouse
+(setf *mouse-focus-policy* :sloppy) 
+
+;; Fonts
+
+(ql:quickload :clx-truetype)
+(load-module "ttf-fonts")
+
+(set-font
+ (make-instance 'xft:font
+                :family "Fira Mono"
+                :subfamily "Regular"
+                :size 20))
+
+;; Screenshots
+
+(defcommand screenshot () ()
+  "Take screenshot"
+  (run-shell-command "deepin-screenshot"))
+
+;; "F8" key on Dell XPS
+(define-key *top-map* (kbd "s-p") "screenshot")
+
+;; Volume
+
+(defun get-volume ()
+  (ppcre:register-groups-bind (volume)
+      ("\\[(.*?)%\\]"
+       (run-shell-command "amixer get Master" t))
+    (when volume
+      (format nil "Volume: ~a%"
+              volume))))
+
+(defun volume-muted? ()
+  (ppcre:register-groups-bind (mutep)
+      ("\\[(on|off)\\]"
+       (run-shell-command "amixer get Master" t))
+    (when mutep
+      (string= "off" mutep))))
+
+(defcommand lower-volume () ()
+    "Lower volume"
+  (run-shell-command "amixer set Master \"5%-\"")
+  (message (get-volume)))
+
+(defcommand raise-volume () ()
+    "Raise volume"
+  (run-shell-command "amixer set Master \"5%+\"")
+  (message (get-volume)))
+
+(defcommand toggle-volume () ()
+  "Toggle volume"
+  (run-shell-command "amixer set Master toggle")
+  (if (volume-muted?)
+      (message "Volume off")
+      (message "Volume on")))
+
+(define-key *top-map* (kbd "XF86AudioLowerVolume") "lower-volume")
+(define-key *top-map* (kbd "XF86AudioRaiseVolume") "raise-volume")
+(define-key *top-map* (kbd "XF86AudioMute") "toggle-volume")
+
+(defun get-backlight ()
+  (format nil "Brightness: ~a"
+          (trim-run-shell-command "xbacklight -get" )))
+
+(defcommand lower-backlight () ()
+    "Lower backlight"
+  (run-shell-command "xbacklight -dec 5")
+  (message (get-backlight)))
+
+(defcommand raise-backlight () ()
+    "Raise backlight"
+  (run-shell-command "xbacklight -inc 5")
+  (message (get-backlight)))
+
+(define-key *top-map* (kbd "XF86MonBrightnessDown") "lower-backlight")
+(define-key *top-map* (kbd "XF86MonBrightnessUp") "raise-backlight")
+
+;; External monitor
+
+(defcommand display-menu () ()
+  "Toggle display controls. Very basic."
+  (let ((selection (select-from-menu
+                    (current-screen)
+                    '("Built-in" "External")
+                    "Select display")))
+    (cond
+      ((string= selection "External")
+       (run-shell-command "xrandr --output DP1 --scale 1.9x1.9 --auto --output eDP1 --off"))
+      ((string= selection "Built-in")
+       (run-shell-command "xrandr --output eDP1 --auto --output DP1 --off")))))
+(define-key *root-map* (kbd "D") "display-menu")
+
+;; Start-up stuff
+
+(setf *startup-message* "In the beginner's mind there are many possibilities,~%but in the expert's mind there are few.")
+(message *startup-message*)
+
+(run-shell-command "compton")
+(run-shell-command "redshift")
+(run-shell-command "light-locker") ;; Lock + screensaver
+(run-shell-command "xset r rate 200 40") ;; Key repeat speed
+(run-shell-command "dropbox")
+(swank-start)
+
+;; Enable tap-to-click
+;; See https://wiki.archlinux.org/index.php/Libinput#Configuration
+(run-shell-command "xinput set-prop 12 281 1")
+
+;; Shut-down
+
+(load-module "end-session")
+(define-key *root-map* (kbd "q") "end-session")
+
+;; Winner mode
+
+(load-module "winner-mode")
+(define-key *root-map* (kbd "Left") "winner-undo")
+(define-key *root-map* (kbd "Right") "winner-redo")
+
+(add-hook *post-command-hook* (lambda (command)
+                                (when (member command winner-mode:*default-commands*)
+                                  (winner-mode:dump-group-to-file))))
