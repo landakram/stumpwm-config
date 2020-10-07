@@ -31,6 +31,16 @@
   (run-or-raise "spotify --force-device-scale-factor=2" `(:class "Spotify")))
 (define-key *root-map* (kbd "s") "open-spotify")
 
+(defcommand open-thunar () ()
+  "Run thunar"
+  (run-or-raise "thunar" `(:class "Thunar")))
+(define-key *root-map* (kbd "F") "open-thunar")
+
+(defcommand open-thunar-new () ()
+  "Run thunar"
+  (run-shell-command "thunar"))
+(define-key *root-map* (kbd "C-F") "open-thunar-new")
+
 (defcommand open-urxvt () ()
   "Run urxvt terminal"
   (run-or-raise "urxvt" `(:class "URxvt")))
