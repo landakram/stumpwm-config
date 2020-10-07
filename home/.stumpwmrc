@@ -248,7 +248,11 @@
 
 ;; Enable tap-to-click
 ;; See https://wiki.archlinux.org/index.php/Libinput#Configuration
-(run-shell-command "xinput set-prop 12 281 1")
+;;
+;; Also, run these commands to remember what those numbers mean:
+;; xinput list
+;; xinput list-props <device-id>
+(run-shell-command "xinput set-prop 13 318 1")
 
 ;; Shut-down
 
