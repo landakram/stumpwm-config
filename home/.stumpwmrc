@@ -6,6 +6,11 @@
 (require :swank)
 (swank-loader:init)
 
+(setf *debug-level* 10)
+(setf *debug-stream* (open "~/.stumpwm.log"
+                           :direction :output
+                           :if-exists :append))
+
 (defcommand swank-start () ()
   (swank:create-server :port 4004
                        :style swank:*communication-style*
@@ -18,7 +23,7 @@
 
 (defcommand open-firefox () ()
   "Run firefox"
-  (run-or-raise "firefox" `(:class "Firefox")))
+  (run-or-raise "firefox" `(:class "firefox")))
 (define-key *root-map* (kbd "f") "open-firefox")
 
 (defcommand open-chrome () ()
