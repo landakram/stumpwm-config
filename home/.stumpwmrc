@@ -6,11 +6,66 @@
 (require :swank)
 (swank-loader:init)
 
-(setf *debug-level* 10)
-(setf *debug-stream* (open "~/.stumpwm.log"
-                           :direction :output
-                           :if-exists :append))
+(setf *debug-level* 1)
+(redirect-all-output
+ #P"~/.stumpwm.log")
 
+(defun arrows--simple-inserter (insert-fun)
+  (lambda (acc next)
+    (if (listp next)
+        (funcall insert-fun acc next)
+        (list next acc))))
+
+(defun arrows--insert-first (arg surround)
+  (list* (car surround)
+         arg
+         (cdr surround)))
+
+(defun arrows--wrap-as (name)
+  (lambda (arg surround)
+    `(let ((,name ,arg))
+       ,surround)))
+
+(defun arrows--insert-last (arg surround)
+  (append surround (list arg)))
+
+(defmacro -> (initial-form &rest forms)
+  (reduce (arrows--simple-inserter #'arrows--insert-first)
+          forms
+          :initial-value initial-form))
+
+(defmacro ->> (initial-form &rest forms)
+  (reduce (arrows--simple-inserter #'arrows--insert-last)
+          forms
+          :initial-value initial-form))
+
+(defmacro as-> (initial-form name &rest forms)
+  "Binds name to expr, evaluates the first form in the lexical context
+of that binding, then binds name to that result, repeating for each
+successive form, returning the result of the last form."
+  (reduce (arrows--simple-inserter (arrows--wrap-as name))
+          forms
+          :initial-value initial-form))
+
+(defmacro --> (initial-form &rest forms)
+  "Starting with the value of INITIAL-FORM, thread each expression through FORMS.
+
+Insert X at the position signified by the symbol ‘it’ in the first
+form.  If there are more forms, insert the first form at the position
+signified by ‘it’ in in second form, etc."
+  `(as-> ,initial-form it ,@forms))
+
+;; Message filters
+(defvar *message-filters* '("Group dumped.")
+  "Don't show these messages.")
+
+(defun message (fmt &rest args)
+  "Overwritten message function to allow filters"
+  (let ((msg-string (apply 'format nil fmt args)))
+    (unless (member msg-string *message-filters* :test #'string=)
+      (echo-string (current-screen) msg-string))))
+
+;; Various commands
 (defcommand swank-start () ()
   (swank:create-server :port 4004
                        :style swank:*communication-style*
@@ -26,14 +81,17 @@
   (run-or-raise "firefox" `(:class "firefox")))
 (define-key *root-map* (kbd "f") "open-firefox")
 
+(defvar *app-map* (make-sparse-keymap))
+(define-key *root-map* (kbd ".") '*app-map*)
+
 (defcommand open-chrome () ()
             "Run chrome"
-            (run-or-raise "google-chrome-stable" `(:class "Chrome")))
-;;(define-key *root-map* (kbd "f") "open-chrome")
+            (run-or-raise "google-chrome-stable" `(:class "Google-chrome")))
+(define-key *app-map* (kbd "c") "open-chrome")
 
 (defcommand open-spotify () ()
   "Run spotify"
-  (run-or-raise "spotify --force-device-scale-factor=2" `(:class "Spotify")))
+  (run-or-raise "spotify --force-device-scale-factor=2.25" `(:class "Spotify")))
 (define-key *root-map* (kbd "s") "open-spotify")
 
 (defcommand open-thunar () ()
@@ -75,28 +133,39 @@
 
 ;; Theme
 
-(run-shell-command "~/.fehbg")
+(setf *suppress-frame-indicator* t)
+(setf *suppress-abort-messages* t)
+
+(defun set-background ()
+  (run-shell-command "~/.fehbg"))
+
+(set-background)
 (set-msg-border-width 1)
 (setf *message-window-padding* 20)
+(setf *message-window-y-padding* 15)
 (setf *message-window-gravity* :center)
 (setf *input-window-gravity* :center)
 
+(setf *normal-border-width* 1)
+
 (setf *window-border-style* :thin)
+*input-completion-style*
 
 ;; Modeline
 
-(setf *colors*
-      '("black"
-       "red"
-       "green"
-       "yellow"
-       "blue"
-       "magenta"
-       "cyan"
-       "white"
-       "GreenYellow"
-       "#009696"))
-(update-color-map (current-screen))
+(progn
+  (setf *colors*
+        '("#1d1f21"       ;; black 0
+          "#cc6666"       ;; red 1 
+          "#282a2e"       ;; dark gray 2
+          "#373b41"       ;; yellow 3
+          "#b4b7b4"       ;; blue 4
+          "#e0e0e0"       ;; brightmagenta 5
+          "#8abeb7"       ;; cyan 6
+          "#c5c8c6"       ;; white 7
+          "#b5bd68"       ;; lighter gray 8
+          "#777777"))     ;; gray 9
+  (update-color-map (current-screen)))
 
 (defcommand toggle-modeline () ()
   "Toggle the modeline"
@@ -120,9 +189,12 @@
 (defun wifi-ssid ()
   (trim-run-shell-command (concat "iw dev " (wifi-interface) " info "
                                   " | awk '$1==\"ssid\" {print $2}'")))
+
 (setf *mode-line-border-width* 0)
-(setf *mode-line-background-color* "#000809")
-(setf *mode-line-foreground-color* "DeepSkyBlue")
+(setf *mode-line-background-color* (nth 0 *colors*))
+(setf *mode-line-foreground-color* (nth 7 *colors*))
+(setf *mode-line-pad-x* 5)
+(setf *mode-line-pad-y* 1)
 
 (load-module "battery-portable")
 (load-module "wifi")
@@ -130,10 +202,16 @@
 (setf *group-format* " %t ")
 (setf *screen-mode-line-format*
       (list
-       "λ "
+       "^8"
+       "["
+       "^[^6"
+       "λ"
+       "^]"
+       "] "
+       "^n"
 
        ;; Groups
-       "^B^3"
+       "^B^9"
        "%g"
        "^b^n"
 
@@ -238,27 +316,29 @@
 
 (defcommand display-menu () ()
   "Toggle display controls. Very basic."
-  (let ((selection (select-from-menu
-                    (current-screen)
-                    '("Built-in" "External")
-                    "Select display")))
+  (let ((selection (car (select-from-menu
+                         (current-screen)
+                         '("Built-in" "External")
+                         "Display: "))))
     (cond
       ((string= selection "External")
-       (run-shell-command "xrandr --output DP1 --scale 1.9x1.9 --auto --output eDP1 --off"))
+       (run-shell-command "~/.screenlayout/external-monitor.sh")
+       (refresh-heads))
       ((string= selection "Built-in")
-       (run-shell-command "xrandr --output eDP1 --auto --output DP1 --off")))))
+       (run-shell-command "xrandr --output eDP1 --auto --output DP1 --off")
+       (refresh-heads)))))
 (define-key *root-map* (kbd "D") "display-menu")
 
 ;; Start-up stuff
 
-(setf *startup-message* "In the beginner's mind there are many possibilities,~%but in the expert's mind there are few.")
-(message *startup-message*)
+(setf *startup-message* nil)
 
 (run-shell-command "compton")
 (run-shell-command "redshift")
 (run-shell-command "light-locker") ;; Lock + screensaver
 (run-shell-command "xset r rate 200 40") ;; Key repeat speed
 (run-shell-command "dropbox")
+(run-shell-command "gnome-keyring-daemon --start")
 (swank-start)
 
 ;; Enable tap-to-click
@@ -267,7 +347,7 @@
 ;; Also, run these commands to remember what those numbers mean:
 ;; xinput list
 ;; xinput list-props <device-id>
-(run-shell-command "xinput set-prop 13 318 1")
+(run-shell-command "xinput set-prop 13 331 1")
 
 ;; Shut-down
 
@@ -283,3 +363,115 @@
 (add-hook *post-command-hook* (lambda (command)
                                 (when (member command winner-mode:*default-commands*)
                                   (winner-mode:dump-group-to-file))))
+
+;;(completing-read (current-screen) "Run: " '("one" "two" "three"))
+
+(defvar *which-key-idle-delay* 0.5)
+(defvar *which-key-secondary-idle-delay* 0.0)
+(defvar *which-key-timer* nil)
+(defvar *which-key-current-prefix* nil)
+
+(defun which-key--display-bindings-for-keymaps (key-seq keymaps &key (sort-fn (constantly t)))
+  (let* ((screen (current-screen))
+         (all-bindings (->> keymaps
+                            (mapcar #'kmap-bindings)
+                            (flatten)))
+         (data (mapcar
+                (lambda (b)
+                  (format nil "^5*~5a^n ~a" (print-key (binding-key b)) (binding-command b)))
+                (sort all-bindings sort-fn)))
+         (cols (ceiling (1+ (length data))
+                        (truncate (- (head-height (current-head)) (* 2 (screen-msg-border-width screen)))
+                                  (font-height (screen-font screen))))))
+    (message-no-timeout "Prefix: ~a~%~{~a~^~%~}"
+                        (print-key-seq key-seq)
+                        (or (columnize data cols) '("(EMPTY MAP)")))))
+
+(defun which-key--sort-alphabetically (b1 b2)
+  "Sort predicate that sorts bindings alphabetically by command name."
+  (not (null (string-lessp (binding-command b1) (binding-command b2)))))
+
+(defun which-key--start-timer (prev-timer-scheduled prev-prefix current-prefix maps)
+  (setf *which-key-timer*
+        (sb-ext:make-timer
+         (lambda ()
+           (when (eq *which-key-current-prefix* current-prefix)
+             (which-key--display-bindings-for-keymaps current-prefix maps :sort-fn #'which-key--sort-alphabetically)))
+         :thread t))
+  (if (and prev-prefix
+           (not prev-timer-scheduled))
+      (sb-ext:schedule-timer *which-key-timer* *which-key-secondary-idle-delay*)
+      (sb-ext:schedule-timer *which-key-timer* *which-key-idle-delay*)))
+
+(defun which-key--key-press-hook (key key-seq cmd)
+  (when (not (eq *top-map* *resize-map*))
+    (let* ((oriented-key-seq (reverse key-seq))
+           (maps (get-kmaps-at-key-seq (dereference-kmaps (top-maps)) oriented-key-seq))
+           (prev-prefix *which-key-current-prefix*)
+           (prev-timer-scheduled (and *which-key-timer*
+                                      (sb-ext:timer-scheduled-p *which-key-timer*))))
+      (setf *which-key-current-prefix* oriented-key-seq)
+      (when (not (member (and (kmap-symbol-p cmd)
+                              (symbol-value cmd))
+                         maps))
+        (setf *which-key-current-prefix* nil))
+
+      (when prev-timer-scheduled
+        (sb-ext:unschedule-timer *which-key-timer*))
+      (when (remove-if-not 'kmap-p maps)
+        (which-key--start-timer prev-timer-scheduled prev-prefix oriented-key-seq maps)))))
+
+(defcommand which-key-mode () ()
+  "which-key-mode with an idle delay"
+  (if (find 'which-key--key-press-hook *key-press-hook*)
+      (progn
+        (remove-hook *key-press-hook* 'which-key--key-press-hook)
+        nil)
+      (progn
+        (add-hook *key-press-hook* 'which-key--key-press-hook)
+        t)))
+
+;; Note: This appears to suffer from concurrency issues that sometimes cause crashes!
+;; It works nicely when it works but obviously isn't great when it crashes!
+;; (which-key-mode)
+
+(defcommand exchange-select () ()
+  (let ((new-window (choose-frame-by-number (current-group))))
+    (exchange-windows (current-window) (frame-window new-window))))
+(define-key *exchange-window-map* (kbd "s") "exchange-select")
+
+(defcommand exchange-from-windowlist () ()
+  (let ((new-window (select-window-from-menu
+                     (group-windows (current-group))
+                     *window-format*)))
+    (exchange-windows (current-window) new-window)))
+(define-key *exchange-window-map* (kbd "w") "exchange-from-windowlist")
+
+
+;; Nord
+
+(defun nord-connected? ()
+  (ppcre:register-groups-bind (connectedp)
+      ("Status: Connected"
+       (run-shell-command "nordvpn status" t))
+    connectedp))
+
+(defun get-completions (cmd-substr)
+  (let* ((cmd (uiop:native-namestring "~/local/bin/get_completions"))
+         (completions-str (trim-run-shell-command (concat cmd " " cmd-substr))))
+    (cl-ppcre:split #\Newline completions-str)))
+
+(defun nord-connect-completions ()
+  (get-completions "nordvpn connect"))
+
+(defcommand nord-connect () () 
+  (let ((where (completing-read (current-screen) "Where? " (nord-connect-completions))))
+    (message (trim-run-shell-command (concat "nordvpn connect " where)))))
+
+(defcommand nord-toggle () ()
+  (if (nord-connected?)
+      (message (trim-run-shell-command "nordvpn disconnect"))
+      (nord-connect)))
+
+(defcommand nord-status () ()
+  (message (trim-run-shell-command "nordvpn status")))
