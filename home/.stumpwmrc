@@ -412,6 +412,9 @@ signified by ‘it’ in in second form, etc."
   (let ((where (completing-read (current-screen) "Where? " (nord-connect-completions))))
     (message (trim-run-shell-command (concat "nordvpn connect " where)))))
 
+(defcommand nord-disconnect () ()
+  (message (trim-run-shell-command (concat "nordvpn disconnect"))))
+
 (defcommand nord-toggle () ()
   (if (nord-connected?)
       (message (trim-run-shell-command "nordvpn disconnect"))
