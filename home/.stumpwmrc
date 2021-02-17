@@ -6,10 +6,6 @@
 (require :swank)
 (swank-loader:init)
 
-(setf *debug-level* 1)
-(redirect-all-output
- #P"~/.stumpwm.log")
-
 (defun arrows--simple-inserter (insert-fun)
   (lambda (acc next)
     (if (listp next)
@@ -149,23 +145,25 @@ signified by ‘it’ in in second form, etc."
 (setf *normal-border-width* 1)
 
 (setf *window-border-style* :thin)
-*input-completion-style*
 
 ;; Modeline
 
 (progn
   (setf *colors*
-        '("#1d1f21"       ;; black 0
+        '("#0c0d0e"       ;; black 0
           "#cc6666"       ;; red 1 
-          "#282a2e"       ;; dark gray 2
-          "#373b41"       ;; yellow 3
-          "#b4b7b4"       ;; blue 4
-          "#e0e0e0"       ;; brightmagenta 5
+          "#2f7e10"       ;; green 2
+          "#f0c674"       ;; yellow 3
+          "#5f819d"       ;; blue 4
+          "#f0c674"       ;; magenta => yellow 5
           "#8abeb7"       ;; cyan 6
           "#c5c8c6"       ;; white 7
-          "#b5bd68"       ;; lighter gray 8
-          "#777777"))     ;; gray 9
+          "#707880"       ;; lighter gray 8
+          "#373b41"))     ;; gray 9
   (update-color-map (current-screen)))
+
+(set-focus-color (nth 7 *colors*))
+
 
 (defcommand toggle-modeline () ()
   "Toggle the modeline"
@@ -174,29 +172,36 @@ signified by ‘it’ in in second form, etc."
 
 (defun trim-run-shell-command (command)
   (string-trim
-   '(#\Newline)
+   '(#\Newline #\Space)
    (run-shell-command command t)))
 
 (defun get-date ()
   (trim-run-shell-command "date +\"%l:%M %p\"" ))
 
 (defun wifi-strength ()
-  (trim-run-shell-command "awk 'NR==3{print $3}' /proc/net/wireless | sed 's/\\.//'") )
+  (let* ((link-strength (trim-run-shell-command "awk 'NR==3{print $3}' /proc/net/wireless | sed 's/\\.//'"))
+         (link-strength (or (ignore-errors (parse-integer link-strength))
+                            0)))
+    (->> (/ link-strength 70)
+         (* 100)
+         (truncate)
+         (format nil "~d"))))
 
 (defun wifi-interface ()
   (trim-run-shell-command "awk 'NR==3{print $1}' /proc/net/wireless | sed 's/://'"))
 
 (defun wifi-ssid ()
   (trim-run-shell-command (concat "iw dev " (wifi-interface) " info "
-                                  " | awk '$1==\"ssid\" {print $2}'")))
+                                  " | awk '$1==\"ssid\" {$1 = \"\"; print $0}'")))
 
 (setf *mode-line-border-width* 0)
 (setf *mode-line-background-color* (nth 0 *colors*))
-(setf *mode-line-foreground-color* (nth 7 *colors*))
+(setf *mode-line-foreground-color* (nth 8 *colors*))
 (setf *mode-line-pad-x* 5)
 (setf *mode-line-pad-y* 1)
 
 (load-module "battery-portable")
+(setf battery-portable::*no-battery-info* "")
 (load-module "wifi")
 (setf *mode-line-position* :top)
 (setf *group-format* " %t ")
@@ -204,16 +209,16 @@ signified by ‘it’ in in second form, etc."
       (list
        "^8"
        "["
-       "^[^6"
+       "^[^1"
        "λ"
        "^]"
        "] "
        "^n"
 
        ;; Groups
-       "^B^9"
+       "^7"
        "%g"
-       "^b^n"
+       "^n"
 
        ;; Windows
        "^7"
