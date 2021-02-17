@@ -364,76 +364,16 @@ signified by ‘it’ in in second form, etc."
                                 (when (member command winner-mode:*default-commands*)
                                   (winner-mode:dump-group-to-file))))
 
-;;(completing-read (current-screen) "Run: " '("one" "two" "three"))
+;; which-key mode
 
-(defvar *which-key-idle-delay* 0.5)
-(defvar *which-key-secondary-idle-delay* 0.0)
-(defvar *which-key-timer* nil)
-(defvar *which-key-current-prefix* nil)
+(setf *which-key-idle-delay* 0.5)
+(setf *which-key-secondary-idle-delay* 0.0)
+(setf *which-key-bindings-formatter* #'alphabetical-command-bindings-formatter)
+(setf *display-bindings-formatter* #'alphabetical-command-bindings-formatter)
 
-(defun which-key--display-bindings-for-keymaps (key-seq keymaps &key (sort-fn (constantly t)))
-  (let* ((screen (current-screen))
-         (all-bindings (->> keymaps
-                            (mapcar #'kmap-bindings)
-                            (flatten)))
-         (data (mapcar
-                (lambda (b)
-                  (format nil "^5*~5a^n ~a" (print-key (binding-key b)) (binding-command b)))
-                (sort all-bindings sort-fn)))
-         (cols (ceiling (1+ (length data))
-                        (truncate (- (head-height (current-head)) (* 2 (screen-msg-border-width screen)))
-                                  (font-height (screen-font screen))))))
-    (message-no-timeout "Prefix: ~a~%~{~a~^~%~}"
-                        (print-key-seq key-seq)
-                        (or (columnize data cols) '("(EMPTY MAP)")))))
+(which-key-mode)
 
-(defun which-key--sort-alphabetically (b1 b2)
-  "Sort predicate that sorts bindings alphabetically by command name."
-  (not (null (string-lessp (binding-command b1) (binding-command b2)))))
-
-(defun which-key--start-timer (prev-timer-scheduled prev-prefix current-prefix maps)
-  (setf *which-key-timer*
-        (sb-ext:make-timer
-         (lambda ()
-           (when (eq *which-key-current-prefix* current-prefix)
-             (which-key--display-bindings-for-keymaps current-prefix maps :sort-fn #'which-key--sort-alphabetically)))
-         :thread t))
-  (if (and prev-prefix
-           (not prev-timer-scheduled))
-      (sb-ext:schedule-timer *which-key-timer* *which-key-secondary-idle-delay*)
-      (sb-ext:schedule-timer *which-key-timer* *which-key-idle-delay*)))
-
-(defun which-key--key-press-hook (key key-seq cmd)
-  (when (not (eq *top-map* *resize-map*))
-    (let* ((oriented-key-seq (reverse key-seq))
-           (maps (get-kmaps-at-key-seq (dereference-kmaps (top-maps)) oriented-key-seq))
-           (prev-prefix *which-key-current-prefix*)
-           (prev-timer-scheduled (and *which-key-timer*
-                                      (sb-ext:timer-scheduled-p *which-key-timer*))))
-      (setf *which-key-current-prefix* oriented-key-seq)
-      (when (not (member (and (kmap-symbol-p cmd)
-                              (symbol-value cmd))
-                         maps))
-        (setf *which-key-current-prefix* nil))
-
-      (when prev-timer-scheduled
-        (sb-ext:unschedule-timer *which-key-timer*))
-      (when (remove-if-not 'kmap-p maps)
-        (which-key--start-timer prev-timer-scheduled prev-prefix oriented-key-seq maps)))))
-
-(defcommand which-key-mode () ()
-  "which-key-mode with an idle delay"
-  (if (find 'which-key--key-press-hook *key-press-hook*)
-      (progn
-        (remove-hook *key-press-hook* 'which-key--key-press-hook)
-        nil)
-      (progn
-        (add-hook *key-press-hook* 'which-key--key-press-hook)
-        t)))
-
-;; Note: This appears to suffer from concurrency issues that sometimes cause crashes!
-;; It works nicely when it works but obviously isn't great when it crashes!
-;; (which-key-mode)
+;; exchange-window-map additions
 
 (defcommand exchange-select () ()
   (let ((new-window (choose-frame-by-number (current-group))))
@@ -446,7 +386,6 @@ signified by ‘it’ in in second form, etc."
                      *window-format*)))
     (exchange-windows (current-window) new-window)))
 (define-key *exchange-window-map* (kbd "w") "exchange-from-windowlist")
-
 
 ;; Nord
 
