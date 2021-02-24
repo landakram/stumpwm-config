@@ -340,19 +340,18 @@ signified by ‘it’ in in second form, etc."
 
 (run-shell-command "compton")
 (run-shell-command "redshift")
-(run-shell-command "light-locker") ;; Lock + screensaver
-(run-shell-command "xset r rate 200 40") ;; Key repeat speed
+;; Lock + screensaver
+(run-shell-command "light-locker --lock-on-lid")
+;; Key repeat speed, also set in /etc/lightdm/lightdm.conf so that
+;; it applies universally to all keyboards.
+(run-shell-command "xset r rate 200 40")
 (run-shell-command "dropbox")
 (run-shell-command "gnome-keyring-daemon --start")
 (swank-start)
 
 ;; Enable tap-to-click
 ;; See https://wiki.archlinux.org/index.php/Libinput#Configuration
-;;
-;; Also, run these commands to remember what those numbers mean:
-;; xinput list
-;; xinput list-props <device-id>
-(run-shell-command "xinput set-prop 13 331 1")
+(run-shell-command "xinput set-prop \"DLL082A:01 06CB:76AF Touchpad\" \"libinput Tapping Enabled\" 1")
 
 ;; Shut-down
 
