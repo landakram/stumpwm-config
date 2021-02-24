@@ -145,6 +145,8 @@ signified by ‘it’ in in second form, etc."
 
 (setf *window-border-style* :thin)
 
+(setf *window-name-source* :class)
+
 ;; Input window
 
 (setf *input-window-gravity* :center)
@@ -220,6 +222,8 @@ signified by ‘it’ in in second form, etc."
 (load-module "wifi")
 (setf *mode-line-position* :top)
 (setf *group-format* " %t ")
+
+(setf *hidden-window-color* "^7")
 (setf *screen-mode-line-format*
       (list
        "^8"
@@ -232,12 +236,12 @@ signified by ‘it’ in in second form, etc."
 
        ;; Groups
        "^7"
-       "%g"
+       "%g "
        "^n"
 
        ;; Windows
        "^7"
-       "%w"
+       "%v"
        "^n"
 
        "^>" ;; Float right
@@ -249,6 +253,7 @@ signified by ‘it’ in in second form, etc."
        " | "
        "%B" ;; Battery
        ))
+
 (setf *mode-line-timeout* 1)
 
 (if (not (head-mode-line (current-head)))
