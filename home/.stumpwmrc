@@ -100,16 +100,16 @@ signified by ‘it’ in in second form, etc."
   (run-shell-command "thunar"))
 (define-key *root-map* (kbd "C-F") "open-thunar-new")
 
-(defcommand open-urxvt () ()
-  "Run urxvt terminal"
+(defcommand open-terminal () ()
+  "Run terminal"
   (run-or-raise "urxvt" `(:class "URxvt")))
 
-(defcommand open-urxvt-new () ()
-  "Run urxvt terminal"
+(defcommand open-terminal-new () ()
+  "Run a new terminal"
   (run-shell-command "urxvt"))
 
-(define-key *root-map* (kbd "c") "open-urxvt")
-(define-key *root-map* (kbd "C-c") "open-urxvt-new")
+(define-key *root-map* (kbd "c") "open-terminal")
+(define-key *root-map* (kbd "C-c") "open-terminal-new")
 
 (define-key *root-map* (kbd "|") "hsplit")
 (define-key *root-map* (kbd "-") "vsplit")
