@@ -140,11 +140,26 @@ signified by ‘it’ in in second form, etc."
 (setf *message-window-padding* 20)
 (setf *message-window-y-padding* 15)
 (setf *message-window-gravity* :center)
-(setf *input-window-gravity* :center)
 
 (setf *normal-border-width* 1)
 
 (setf *window-border-style* :thin)
+
+;; Input window
+
+(setf *input-window-gravity* :center)
+(setf *input-completion-show-empty* t)
+(setf *input-refine-candidates-fn* #'input-refine-regexp)
+(setf *maximum-completions* 30)
+
+(defun input-get-help (input key)
+  (declare (ignore key))
+  (let ((fn (string-trim
+             '(#\Space)
+             (car
+              (input-find-completions (input-substring input 0 (input-point input)) *input-completions*)))))
+    (call-interactively 'describe-function fn)))
+(define-key *input-map* (kbd "C-h") 'input-get-help)
 
 ;; Modeline
 
