@@ -6,6 +6,9 @@
 (require :swank)
 (swank-loader:init)
 
+(ql:quickload "parser.ini")
+(ql:quickload "str")
+
 (defun arrows--simple-inserter (insert-fun)
   (lambda (acc next)
     (if (listp next)
@@ -75,7 +78,41 @@ signified by ‘it’ in in second form, etc."
 (defcommand open-firefox () ()
   "Run firefox"
   (run-or-raise "firefox" `(:class "firefox")))
-(define-key *root-map* (kbd "f") "open-firefox")
+
+(defun get-firefox-profiles ()
+  "Parse firefox's profiles.ini to get the names of profiles."
+  (let* ((f (uiop:read-file-string (uiop:native-namestring "~/.mozilla/firefox/profiles.ini"))) 
+         (parser.ini:*assignment-operator* #\=)
+         (sections (parser.ini:parse f 'list))
+         (profile-sections (remove-if-not
+                            (lambda (s)
+                              (str:starts-with? "Profile" (car (getf s :name))))
+                            sections)))
+    (mapcar
+     (lambda (s)
+       (let* ((opts (-> s
+                        (getf :section)
+                        (getf :section-option))))
+         (--> 
+          (find-if (lambda (o)
+                     (equal
+                      (car (getf (car o) :name))
+                      "Name"))
+                   opts)
+          (car it)
+          (getf it :value))))
+     profile-sections)))
+
+(defcommand run-firefox-with-profile () ()
+  (let ((profile (completing-read (current-screen) "Profile: " (get-firefox-profiles))))
+    (run-shell-command (format nil "firefox -P ~A" profile))))
+
+(defcommand run-firefox-matching-current-group () ()
+  (let ((profiles (get-firefox-profiles))
+        (profile (group-name (current-group))))
+    (if (member profile profiles :test #'equal)
+        (run-or-raise (format nil "firefox -P ~A" profile) `(:class "firefox"))
+        (message (format nil "No profile named ~A" profile)))))
 
 (defvar *app-map* (make-sparse-keymap))
 (define-key *root-map* (kbd ".") '*app-map*)
@@ -125,7 +162,12 @@ signified by ‘it’ in in second form, etc."
 (define-key *root-map* (kbd "J") "move-window down")
 (define-key *root-map* (kbd "K") "move-window up")
 
+(define-key *root-map* (kbd "f") "run-firefox-matching-current-group")
+
 (define-key *root-map* (kbd "b") "pull-from-windowlist")
+
+;; Only raise in current group
+(setf *run-or-raise-all-groups* nil)
 
 ;; Theme
 
