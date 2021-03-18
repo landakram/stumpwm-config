@@ -137,6 +137,11 @@ signified by ‘it’ in in second form, etc."
   (run-shell-command "thunar"))
 (define-key *root-map* (kbd "C-F") "open-thunar-new")
 
+(defcommand open-slack () ()
+  "Run slack"
+  (run-or-raise "slack" `(:class "Slack")))
+(define-key *root-map* (kbd "S") "open-slack")
+
 (defcommand open-terminal () ()
   "Run terminal"
   (run-or-raise "urxvt" `(:class "URxvt")))
@@ -487,3 +492,29 @@ signified by ‘it’ in in second form, etc."
 
 (defcommand nord-status () ()
   (message (trim-run-shell-command "nordvpn status")))
+
+;; Notify
+
+(load-module "notify")
+(notify:notify-server-toggle)
+
+(setf notify:*notify-server-title-color* "^5")
+(setf notify:*notify-server-body-color* "^7")
+
+(defun show-notification (app icon summary body)
+  "Override to show notification windows in the top right."
+  (declare (ignore app icon))
+  (let ((*message-window-gravity* :top-right))
+    (message "~A~A^0~% ~%~A~A^0"
+             notify:*notify-server-title-color*
+             (notify::rewrap-body
+              summary
+              :max-lines notify:*notify-server-max-title-lines*
+              :show-ellipsis t)
+             notify:*notify-server-body-color*
+             (notify::rewrap-body
+              body
+              :max-lines notify:*notify-server-max-body-lines*
+              :show-ellipsis t))))
+
+(setf notify:*notification-received-hook* '(show-notification))
