@@ -319,7 +319,11 @@ signified by ‘it’ in in second form, etc."
 
 (defcommand screenshot () ()
   "Take screenshot"
-  (run-shell-command "deepin-screenshot"))
+  ;; Run with a timer because otherwise input window is still visible
+  ;; when run with `colon'
+  (run-with-timer 0.1 nil
+                  (lambda ()
+                    (run-shell-command "flameshot gui"))))
 
 ;; "F8" key on Dell XPS
 (define-key *top-map* (kbd "s-p") "screenshot")
