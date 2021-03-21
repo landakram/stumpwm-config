@@ -501,23 +501,42 @@ signified by ‘it’ in in second form, etc."
 (load-module "notify")
 (notify:notify-server-toggle)
 
-(setf notify:*notify-server-title-color* "^5")
+(setf notify:*notify-server-title-color* "^4")
 (setf notify:*notify-server-body-color* "^7")
+
+(defvar *notification-filter* (constantly t))
+
+(defun do-not-disturb-notification-filter (app icon summary body)
+  (not (member app '("Slack") :test #'string=)))
+
+(defvar *do-not-disturb-mode* nil)
+(defcommand do-not-disturb-mode () ()
+  (if *do-not-disturb-mode*
+      (progn
+        (setf *do-not-disturb-mode* nil)
+        (setf *notification-filter* (constantly t))
+        (message "Do not disturb is off"))
+      (progn
+        (setf *do-not-disturb-mode* t)
+        (setf *notification-filter* #'do-not-disturb-notification-filter)
+        (message "Do not disturb is on"))))
 
 (defun show-notification (app icon summary body)
   "Override to show notification windows in the top right."
   (declare (ignore app icon))
+  (dformat 1 "app ~A icon ~A summary ~A" app icon summary)
   (let ((*message-window-gravity* :top-right))
-    (message "~A~A^0~% ~%~A~A^0"
-             notify:*notify-server-title-color*
-             (notify::rewrap-body
-              summary
-              :max-lines notify:*notify-server-max-title-lines*
-              :show-ellipsis t)
-             notify:*notify-server-body-color*
-             (notify::rewrap-body
-              body
-              :max-lines notify:*notify-server-max-body-lines*
-              :show-ellipsis t))))
+    (when (funcall *notification-filter* app icon summary body)
+      (message "~A~A^0~% ~%~A~A^0"
+               notify:*notify-server-title-color*
+               (notify::rewrap-body
+                summary
+                :max-lines notify:*notify-server-max-title-lines*
+                :show-ellipsis t)
+               notify:*notify-server-body-color*
+               (notify::rewrap-body
+                body
+                :max-lines notify:*notify-server-max-body-lines*
+                :show-ellipsis t)))))
 
 (setf notify:*notification-received-hook* '(show-notification))
