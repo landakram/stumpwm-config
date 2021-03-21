@@ -9,6 +9,9 @@
 (ql:quickload "parser.ini")
 (ql:quickload "str")
 
+(setf *debug-level* 3)
+(redirect-all-output (data-dir-file "debug-output" "txt"))
+
 (defun arrows--simple-inserter (insert-fun)
   (lambda (acc next)
     (if (listp next)
@@ -77,7 +80,8 @@ signified by ‘it’ in in second form, etc."
 
 (defcommand open-firefox () ()
   "Run firefox"
-  (run-or-raise "firefox" `(:class "firefox")))
+  (let ((*run-or-raise-all-groups* nil))
+    (run-or-raise "firefox" `(:class "firefox"))))
 
 (defun get-firefox-profiles ()
   "Parse firefox's profiles.ini to get the names of profiles."
@@ -104,11 +108,13 @@ signified by ‘it’ in in second form, etc."
      profile-sections)))
 
 (defcommand run-firefox-with-profile () ()
-  (let ((profile (completing-read (current-screen) "Profile: " (get-firefox-profiles))))
+  (let ((*run-or-raise-all-groups* nil)
+        (profile (completing-read (current-screen) "Profile: " (get-firefox-profiles))))
     (run-shell-command (format nil "firefox -P ~A" profile))))
 
 (defcommand run-firefox-matching-current-group () ()
-  (let ((profiles (get-firefox-profiles))
+  (let ((*run-or-raise-all-groups* nil)
+        (profiles (get-firefox-profiles))
         (profile (group-name (current-group))))
     (if (member profile profiles :test #'equal)
         (run-or-raise (format nil "firefox -P ~A" profile) `(:class "firefox"))
@@ -170,9 +176,6 @@ signified by ‘it’ in in second form, etc."
 (define-key *root-map* (kbd "f") "run-firefox-matching-current-group")
 
 (define-key *root-map* (kbd "b") "pull-from-windowlist")
-
-;; Only raise in current group
-(setf *run-or-raise-all-groups* nil)
 
 ;; Theme
 
