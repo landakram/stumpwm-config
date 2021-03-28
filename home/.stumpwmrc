@@ -205,8 +205,11 @@ signified by ‘it’ in in second form, etc."
 
 (setf *input-window-gravity* :center)
 (setf *input-completion-show-empty* t)
-(setf *input-refine-candidates-fn* #'input-refine-regexp)
-(setf *maximum-completions* 30)
+
+(setf *maximum-completions* 15)
+
+(ql:quickload :stumpwm-prescient)
+(setf *input-refine-candidates-fn* 'stumpwm-prescient:refine-input)
 
 (defun input-get-help (input key)
   (declare (ignore key))
