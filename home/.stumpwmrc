@@ -178,6 +178,9 @@ signified by ‘it’ in in second form, etc."
 
 (define-key *root-map* (kbd "b") "pull-from-windowlist")
 
+;; Rename default group
+(setf (group-name (current-group)) "default")
+
 ;; Theme
 
 (setf *suppress-frame-indicator* t)
