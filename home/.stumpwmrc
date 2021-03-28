@@ -150,7 +150,8 @@ signified by ‘it’ in in second form, etc."
 
 (defcommand open-terminal () ()
   "Run terminal"
-  (run-or-raise "urxvt" `(:class "URxvt")))
+  (let ((*run-or-raise-all-groups* nil))
+    (run-or-raise "urxvt" `(:class "URxvt"))))
 
 (defcommand open-terminal-new () ()
   "Run a new terminal"
