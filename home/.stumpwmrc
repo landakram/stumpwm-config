@@ -57,6 +57,26 @@ form.  If there are more forms, insert the first form at the position
 signified by ‘it’ in in second form, etc."
   `(as-> ,initial-form it ,@forms))
 
+;;
+
+(defun run-or-raise-or-pull (cmd props &optional (all-screens *run-or-raise-all-screens*))
+  "If in current group, raise. If in other group, pull. Otherwise, run."
+  (let* ((matches (find-matching-windows props t all-screens))
+         ;; other-matches is list of matches "after" the current
+         ;; win, if current win matches. getting 2nd element means
+         ;; skipping over the current win, to cycle through matches
+         (other-matches (member (current-window) matches))
+         (win (if (> (length other-matches) 1)
+                  (second other-matches)
+                  (first matches))))
+    (if win
+        (if (equal (window-group win) (current-group))
+         (focus-all win)
+         (progn
+           (pull-w win)
+           (focus-all win)))
+        (run-shell-command cmd))))
+
 ;; Message filters
 (defvar *message-filters* '("Group dumped.")
   "Don't show these messages.")
@@ -135,7 +155,7 @@ signified by ‘it’ in in second form, etc."
 
 (defcommand open-thunar () ()
   "Run thunar"
-  (run-or-raise "thunar" `(:class "Thunar")))
+  (run-or-raise-or-pull "thunar" `(:class "Thunar")))
 (define-key *root-map* (kbd "F") "open-thunar")
 
 (defcommand open-thunar-new () ()
@@ -147,6 +167,11 @@ signified by ‘it’ in in second form, etc."
   "Run slack"
   (run-or-raise "slack" `(:class "Slack")))
 (define-key *root-map* (kbd "S") "open-slack")
+
+(defcommand open-emacs () ()
+  "Run slack"
+  (run-or-raise-or-pull "emacs" `(:class "Emacs")))
+(define-key *root-map* (kbd "e") "open-emacs")
 
 (defcommand open-terminal () ()
   "Run terminal"
