@@ -420,6 +420,14 @@ signified by ‘it’ in in second form, etc."
   (run-shell-command "xbacklight -inc 5")
   (message (get-backlight)))
 
+(defcommand screen-off () ()
+  "Lower backlight to 0"
+  (run-shell-command "xbacklight -set 0"))
+
+(defcommand screen-on () ()
+  "Lower backlight to 0"
+  (run-shell-command "xbacklight -set 100"))
+
 (define-key *top-map* (kbd "XF86MonBrightnessDown") "lower-backlight")
 (define-key *top-map* (kbd "XF86MonBrightnessUp") "raise-backlight")
 
