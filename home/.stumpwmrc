@@ -482,15 +482,6 @@ signified by ‘it’ in in second form, etc."
                                 (when (member command winner-mode:*default-commands*)
                                   (winner-mode:dump-group-to-file))))
 
-;; which-key mode
-
-(setf *which-key-idle-delay* 0.5)
-(setf *which-key-secondary-idle-delay* 0.0)
-(setf *which-key-bindings-formatter* #'alphabetical-command-bindings-formatter)
-(setf *display-bindings-formatter* #'alphabetical-command-bindings-formatter)
-
-(which-key-mode)
-
 ;; exchange-window-map additions
 
 (defcommand exchange-select () ()
