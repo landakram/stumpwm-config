@@ -428,6 +428,11 @@ signified by ‘it’ in in second form, etc."
   "Lower backlight to 0"
   (run-shell-command "xbacklight -set 100"))
 
+(defcommand screen-prompt () ()
+  "Lower backlight to a prompted value"
+  (let ((backlight-value (completing-read (current-screen) "Desired brightness: " '())))
+    (run-shell-command (format nil "xbacklight -set ~s" backlight-value))))
+
 (define-key *top-map* (kbd "XF86MonBrightnessDown") "lower-backlight")
 (define-key *top-map* (kbd "XF86MonBrightnessUp") "raise-backlight")
 
