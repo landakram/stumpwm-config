@@ -326,11 +326,6 @@ signified by ‘it’ in in second form, etc."
 (defvar *modeline-timer* (sb-ext:make-timer (lambda () (refresh-modeline)) :thread t :name "modeline"))
 (sb-ext:schedule-timer *modeline-timer* 0 :repeat-interval 5)
 
-(sb-ext:timer-scheduled-p *modeline-timer*)
-
-(sb-ext:timer-name *modeline-timer*)
-(sb-ext:list-all-timers)
-
 (setf *hidden-window-color* "^7")
 (setf *screen-mode-line-format*
       (list
