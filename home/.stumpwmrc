@@ -305,6 +305,32 @@ signified by ‘it’ in in second form, etc."
 (setf *mode-line-position* :top)
 (setf *group-format* " %t ")
 
+;; Asynchronously set some modeline data so calculations / external calls don't happen inside
+;; the render loop. This speeds up stumpwm significantly because the modeline gets refreshed
+;; often (e.g. when switching windows)
+(defstruct async-modeline
+  wifi-ssid
+  wifi-strength
+  date)
+
+(defvar *async-modeline* (make-async-modeline))
+
+(defun refresh-modeline ()
+  (let ((-wifi-ssid (wifi-ssid))
+        (-wifi-strength (wifi-strength))
+        (date (get-date)))
+    (sb-ext:atomic-update (async-modeline-wifi-ssid *async-modeline*) (lambda (_) -wifi-ssid))
+    (sb-ext:atomic-update (async-modeline-wifi-strength *async-modeline*) (lambda (_) -wifi-strength))
+    (sb-ext:atomic-update (async-modeline-date *async-modeline*) (lambda (_) date))))
+
+(defvar *modeline-timer* (sb-ext:make-timer (lambda () (refresh-modeline)) :thread t :name "modeline"))
+(sb-ext:schedule-timer *modeline-timer* 0 :repeat-interval 5)
+
+(sb-ext:timer-scheduled-p *modeline-timer*)
+
+(sb-ext:timer-name *modeline-timer*)
+(sb-ext:list-all-timers)
+
 (setf *hidden-window-color* "^7")
 (setf *screen-mode-line-format*
       (list
@@ -327,11 +353,11 @@ signified by ‘it’ in in second form, etc."
        "^n"
 
        "^>" ;; Float right
-       '(:eval (wifi-ssid))
+       '(:eval (async-modeline-wifi-ssid *async-modeline*))
        " "
-       "[" '(:eval (wifi-strength)) "%" "]"
+       "[" '(:eval (async-modeline-wifi-strength *async-modeline*)) "%" "]"
        " | "
-       '(:eval (get-date)) 
+       '(:eval (async-modeline-date *async-modeline*)) 
        " | "
        "%B" ;; Battery
        ))
