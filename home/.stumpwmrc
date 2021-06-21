@@ -462,17 +462,29 @@ signified by ‘it’ in in second form, etc."
 (define-key *top-map* (kbd "XF86MonBrightnessDown") "lower-backlight")
 (define-key *top-map* (kbd "XF86MonBrightnessUp") "raise-backlight")
 
+(defcommand pkill () ()
+  "Run pkill using user input"
+  (let ((program-to-kill (completing-read (current-screen)
+                                          "Program to kill: "
+                                          '("firefox" "redshift" "emacs"))))
+    (run-shell-command (format nil "pkill -f ~s" program-to-kill))))
+
+(define-key *root-map* (kbd "K") "pkill")
+
 ;; External monitor
 
 (defcommand display-menu () ()
   "Toggle display controls. Very basic."
   (let ((selection (car (select-from-menu
                          (current-screen)
-                         '("Built-in" "External")
+                         '("Built-in" "Home" "Office")
                          "Display: "))))
     (cond
-      ((string= selection "External")
+      ((string= selection "Home")
        (run-shell-command "~/.screenlayout/external-monitor.sh")
+       (refresh-heads))
+      ((string= selection "Office")
+       (run-shell-command "~/.screenlayout/external-monitor-office.sh")
        (refresh-heads))
       ((string= selection "Built-in")
        (run-shell-command "xrandr --output eDP1 --auto --output DP1 --off")
