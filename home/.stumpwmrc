@@ -534,6 +534,14 @@ signified by ‘it’ in in second form, etc."
     (exchange-windows (current-window) new-window)))
 (define-key *exchange-window-map* (kbd "w") "exchange-from-windowlist")
 
+;; groups
+
+(defcommand gmove-all-to-group (to-group) ((:group "To Group: "))
+  "Move all windows to a different group. Useful after a crash."
+  (let ((all-windows (all-windows)))
+    (dolist (window all-windows)
+      (move-window-to-group window to-group))))
+
 ;; Nord
 
 (defun nord-connected? ()
@@ -570,7 +578,7 @@ signified by ‘it’ in in second form, etc."
 (load-module "notify")
 (notify:notify-server-toggle)
 
-(setf notify:*notify-server-title-color* "^4")
+(setf notify:*notify-server-title-color* "^6")
 (setf notify:*notify-server-body-color* "^7")
 
 (defvar *notification-filter* (constantly t))
